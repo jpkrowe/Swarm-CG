@@ -366,6 +366,11 @@ def read_cg_itp_file(ns):
                             raise exceptions.MissformattedFile(
                                 msg_force_boundaries(i + 1, 0, ns.default_max_fct_angles_opti_f2,
                                                      "-max_fct_angles_f2"))
+                        elif func == 10 and not 0 <= float(
+                                sp_itp_line[5]) <= ns.default_max_fct_angles_opti_f2:
+                            raise exceptions.MissformattedFile(
+                                msg_force_boundaries(i + 1, 0, ns.default_max_fct_angles_opti_f2,
+                                                     "-max_fct_angles_f2"))
 
                 elif section_read["dihedral"]:
 

@@ -14,7 +14,7 @@ from swarmcg import config
 from swarmcg.shared import math_utils, styling, exceptions, catch_warnings
 from swarmcg.shared.math_utils import draw_float
 from swarmcg.simulations.potentials import (gmx_bonds_func_1, gmx_angles_func_1, gmx_angles_func_2,
-                                            gmx_dihedrals_func_1, gmx_dihedrals_func_2)
+                                            gmx_angles_func_10, gmx_dihedrals_func_1, gmx_dihedrals_func_2)
 
 matplotlib.use("AGG")  # use the Anti-Grain Geometry non-interactive backend suited for scripted PNG creation
 
@@ -287,6 +287,8 @@ def get_search_space_boundaries(ns):
                 search_space_boundaries.extend([[0, ns.default_max_fct_angles_opti_f1]])
             elif ns.cg_itp["angle"][grp_angle]["func"] == 2:
                 search_space_boundaries.extend([[0, ns.default_max_fct_angles_opti_f2]])
+            elif ns.cg_itp["angle"][grp_angle]["func"] == 10:
+                search_space_boundaries.extend([[0, ns.default_max_fct_angles_opti_f2]]) # We use the same limit as for func 2
 
     if ns.opti_cycle["nb_geoms"]["dihedral"] > 0:
         if ns.exec_mode == 1:
@@ -362,6 +364,9 @@ def get_initial_guess_list(ns, nb_particles):
         elif ns.cg_itp["angle"][i]["func"] == 2:
             input_guess.append(
                 min(max(ns.out_itp["angle"][i]["fct"], 0), ns.default_max_fct_angles_opti_f2))  # angles force constants
+        elif ns.cg_itp["angle"][i]["func"] == 10:
+            input_guess.append(
+                min(max(ns.out_itp["angle"][i]["fct"], 0), ns.default_max_fct_angles_opti_f2)) # We use the same limit as for func 2
 
     if ns.exec_mode == 1:
         for i in range(ns.opti_cycle["nb_geoms"]["dihedral"]):
@@ -434,6 +439,8 @@ def get_initial_guess_list(ns, nb_particles):
                     input_guess.append(min(max(ns.out_itp["angle"][i]["fct"], 0), ns.default_max_fct_angles_opti_f1))
                 elif ns.cg_itp["angle"][i]["func"] == 2:
                     input_guess.append(min(max(ns.out_itp["angle"][i]["fct"], 0), ns.default_max_fct_angles_opti_f2))
+                elif ns.cg_itp["angle"][i]["func"] == 10:
+                    input_guess.append(min(max(ns.out_itp["angle"][i]["fct"], 0), ns.default_max_fct_angles_opti_f2))
 
         # dihedrals equilibrium values
         if ns.exec_mode == 1:
@@ -494,6 +501,8 @@ def get_initial_guess_list(ns, nb_particles):
             if ns.cg_itp["angle"][i]["func"] == 1:
                 input_guess.append(min(max(ns.out_itp["angle"][i]["fct_user"], 0), ns.default_max_fct_angles_opti_f1))
             elif ns.cg_itp["angle"][i]["func"] == 2:
+                input_guess.append(min(max(ns.out_itp["angle"][i]["fct_user"], 0), ns.default_max_fct_angles_opti_f2))
+            elif ns.cg_itp["angle"][i]["func"] == 10:
                 input_guess.append(min(max(ns.out_itp["angle"][i]["fct_user"], 0), ns.default_max_fct_angles_opti_f2))
 
         # dihedrals equilibrium values
@@ -596,6 +605,10 @@ def get_initial_guess_list(ns, nb_particles):
                                     ns.out_itp["angle"][j]["fct"] + config.fct_guess_min_flat_diff_angles),
                                 ns.default_max_fct_angles_opti_f1)
             elif ns.cg_itp["angle"][j]["func"] == 2:
+                draw_high = min(max(ns.out_itp["angle"][j]["fct"] * (1 + ns.fct_guess_fact * emd_err_fact),
+                                    ns.out_itp["angle"][j]["fct"] + config.fct_guess_min_flat_diff_angles),
+                                ns.default_max_fct_angles_opti_f2)
+            elif ns.cg_itp["angle"][j]["func"] == 10:
                 draw_high = min(max(ns.out_itp["angle"][j]["fct"] * (1 + ns.fct_guess_fact * emd_err_fact),
                                     ns.out_itp["angle"][j]["fct"] + config.fct_guess_min_flat_diff_angles),
                                 ns.default_max_fct_angles_opti_f2)
@@ -906,6 +919,19 @@ def perform_BI(ns):
                         popt[0] += 10
                 except RuntimeError:  # curve fit did not converge
                     popt[0] = 30
+            elif func == 10:
+                params_guess = [max(y) - min(y), std_rad_grp_angle, min(y)]
+                try:
+                    popt, pcov = curve_fit(gmx_angles_func_2, x, y, p0=params_guess, sigma=sigma, maxfev=99999,
+                                       absolute_sigma=False)
+                    if popt[
+                        0] < 0:  # correct the negative force constant that can result from the fit of stiff angles at values close to 180
+                        popt[
+                            0] = config.default_max_fct_angles_bi * 0.8  # stiff is most probably max fct value, so get close to it
+                    elif bi_xrange[1] == 180 - ns.bw_angles / 2:
+                        popt[0] += 10
+                except RuntimeError:
+                    popt[0] = 30
 
             # here we just update the force constant, angle value is already set to the average of distribution
             ns.out_itp["angle"][grp_angle]["fct"] = popt[0]
@@ -917,6 +943,11 @@ def perform_BI(ns):
                     ns.out_itp["angle"][grp_angle]["fct"] = min(config.default_max_fct_angles_bi,
                                                                 ns.default_max_fct_angles_opti_f1) / 2
             elif func == 2:
+                if not 0 <= ns.out_itp["angle"][grp_angle]["fct"] <= min(config.default_max_fct_angles_bi,
+                                                                         ns.default_max_fct_angles_opti_f2):
+                    ns.out_itp["angle"][grp_angle]["fct"] = min(config.default_max_fct_angles_bi,
+                                                                ns.default_max_fct_angles_opti_f2) / 2
+            elif func == 10:
                 if not 0 <= ns.out_itp["angle"][grp_angle]["fct"] <= min(config.default_max_fct_angles_bi,
                                                                          ns.default_max_fct_angles_opti_f2):
                     ns.out_itp["angle"][grp_angle]["fct"] = min(config.default_max_fct_angles_bi,
