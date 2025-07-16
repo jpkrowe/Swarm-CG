@@ -23,8 +23,10 @@ def header_package(module_line):
 {sep_close}
 |                 Swarm-CG is distributed under the terms of the MIT License.                 |
 |                                                                                             |
+|                       Edited version using ReB potential                                    |
+|                                                                                             |
 |                    Feedback, questions and bug reports are welcome at:                      |
-|                        {config.github_url}/issues                          |
+|                        {config.github_url}/issues                                           |
 |                                                                                             |
 |                 If you found Swarm-CG useful in your research, please cite:                 |
 |            Swarm-CG: Automatic parametrization of bonded terms in MARTINI-based             |

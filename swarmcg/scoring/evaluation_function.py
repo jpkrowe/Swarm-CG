@@ -4,11 +4,11 @@ import time
 from datetime import datetime
 
 from swarmcg import config, io as io, simulations as sim
-from swarmcg.swarmCG import update_cg_itp_obj, compare_models
 from swarmcg.utils import print_stdout_forced
 
 
 def eval_function(parameters_set, ns):
+    from swarmcg.swarmCG import update_cg_itp_obj, compare_models
     """Evaluation function to be optimized using FST-PSO.
 
     ns requires:

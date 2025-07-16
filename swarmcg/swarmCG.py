@@ -922,7 +922,7 @@ def perform_BI(ns):
             elif func == 10:
                 params_guess = [max(y) - min(y), std_rad_grp_angle, min(y)]
                 try:
-                    popt, pcov = curve_fit(gmx_angles_func_2, x, y, p0=params_guess, sigma=sigma, maxfev=99999,
+                    popt, pcov = curve_fit(gmx_angles_func_10, x, y, p0=params_guess, sigma=sigma, maxfev=99999,
                                        absolute_sigma=False)
                     if popt[
                         0] < 0:  # correct the negative force constant that can result from the fit of stiff angles at values close to 180
